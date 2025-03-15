@@ -1,16 +1,89 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { ChatState, Message } from "@/lib/types";
 import { apiRequest } from "@/lib/queryClient";
 import { v4 as uuidv4 } from 'uuid';
 
-export default function useChat() {
+interface UseChatOptions {
+  userId?: number;
+  username?: string;
+  initialSessionId?: string;
+}
+
+export default function useChat({ userId, username, initialSessionId }: UseChatOptions = {}) {
   const [chatState, setChatState] = useState<ChatState>({
     messages: [],
     isLoading: false,
     error: null
   });
+  const [activeSessionId, setActiveSessionId] = useState<string | undefined>(initialSessionId);
 
   const { messages, isLoading, error } = chatState;
+
+  // Clear messages when switching sessions
+  useEffect(() => {
+    setChatState({
+      messages: [],
+      isLoading: false,
+      error: null
+    });
+    
+    // If we have an active session, load its messages
+    if (activeSessionId) {
+      loadSessionMessages(activeSessionId);
+    }
+  }, [activeSessionId]);
+
+  // Load messages for a specific session
+  const loadSessionMessages = async (sessionId: string) => {
+    if (!sessionId) return;
+    
+    setChatState(prev => ({ ...prev, isLoading: true, error: null }));
+    
+    try {
+      const response = await apiRequest(
+        "GET",
+        `/api/sessions/${sessionId}/messages`
+      );
+      
+      const data = await response.json();
+      if (data.messages && Array.isArray(data.messages)) {
+        // Convert timestamps to Date objects
+        const formattedMessages = data.messages.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+        
+        setChatState(prev => ({ 
+          ...prev, 
+          messages: formattedMessages,
+          isLoading: false
+        }));
+      }
+    } catch (err) {
+      setChatState(prev => ({
+        ...prev,
+        error: err instanceof Error 
+          ? err.message 
+          : "Failed to load messages. Please try again.",
+        isLoading: false
+      }));
+    }
+  };
+
+  // Start a new chat
+  const startNewChat = useCallback(() => {
+    setActiveSessionId(undefined);
+    setChatState({
+      messages: [],
+      isLoading: false,
+      error: null
+    });
+    
+    // Auto-start with welcome message
+    if (username) {
+      sendMessage("", true);
+    }
+  }, [username]);
 
   const addMessage = useCallback((message: Message) => {
     setChatState((prevState) => ({
@@ -51,10 +124,21 @@ export default function useChat() {
       const response = await apiRequest(
         "POST",
         "/api/chat",
-        isInitial ? { initial: true } : { message: content }
+        {
+          message: content,
+          initial: isInitial,
+          sessionId: activeSessionId,
+          userId,
+          username
+        }
       );
       
       const data = await response.json();
+      
+      // Store the session ID if this is a new session
+      if (data.sessionId && !activeSessionId) {
+        setActiveSessionId(data.sessionId);
+      }
       
       // Add AI response to the chat
       const aiMessage: Message = {
@@ -78,13 +162,21 @@ export default function useChat() {
         isLoading: false
       }));
     }
-  }, [addMessage]);
+  }, [addMessage, activeSessionId, userId, username]);
+
+  // Select a different chat session
+  const selectSession = useCallback((sessionId: string) => {
+    setActiveSessionId(sessionId);
+  }, []);
 
   return {
     messages,
     isLoading,
     error,
     sendMessage,
-    clearError
+    clearError,
+    activeSessionId,
+    selectSession,
+    startNewChat
   };
 }

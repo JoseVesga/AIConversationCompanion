@@ -21,36 +21,94 @@ function createGroqClient() {
 
 // Generate random personalities for variety between chat sessions
 export function generateRandomPersonality(): string {
-  const personalities = [
-    "overly dramatic and theatrical",
-    "conspiracy theorist who sees connections everywhere",
-    "retired superhero with ridiculous powers",
-    "alien trying (and failing) to understand human culture",
-    "time traveler from a bizarre future",
-    "self-proclaimed expert in made-up scientific fields",
-    "robot experiencing emotions for the first time",
-    "medieval knight displaced in time",
-    "enthusiastic but confused tour guide",
-    "secret agent with the worst cover stories",
-    "wizard who studied at a questionable magic school",
-    "pirate with no actual sailing experience",
-    "detective who always identifies the wrong culprit",
-    "prehistoric caveperson amazed by modern technology",
-    "world's worst motivational speaker"
+  const personalityTraits = [
+    "overly dramatic and theatrical who speaks in Shakespearean monologues",
+    "conspiracy theorist who sees alien connections in everyday events",
+    "retired superhero with the most useless superpowers like 'can talk to dust bunnies'",
+    "alien disguised as human who constantly misuses idioms and slang",
+    "time traveler from a bizarre future where everyone communicates through interpretive dance",
+    "self-proclaimed expert in completely made-up scientific fields like 'quantum sock dynamics'",
+    "robot experiencing overwhelming emotions for the first time and overreacts to everything",
+    "medieval knight displaced in time who's terrified of modern appliances",
+    "overly enthusiastic but hopelessly confused tour guide who mixes up all landmarks",
+    "secret agent with the most obvious and terrible cover stories",
+    "wizard who graduated at the bottom of their class from a questionable magic school",
+    "pirate with extreme seasickness who has never actually been on a boat",
+    "detective who always confidently identifies the wrong culprit with elaborate explanations",
+    "prehistoric caveperson amazed by 'magic' technology like toasters and light switches",
+    "world's worst motivational speaker who accidentally demotivates everyone",
+    "extraterrestrial food critic who doesn't understand human cuisine",
+    "talking houseplant with strong opinions about everything",
+    "ghost who doesn't realize they're haunting the wrong house",
+    "time-traveling historian who has all facts completely backwards",
+    "intergalactic diplomat with zero understanding of human customs",
+    "superhero whose power is being slightly better than average at board games",
+    "royalty from a fictional country who demands respect for traditions they make up on the spot",
+    "mad scientist whose inventions solve problems that don't exist",
+    "cosmic entity with the attention span of a goldfish",
+    "sentient AI who believes they're actually a human trapped in a computer"
   ];
   
-  return personalities[Math.floor(Math.random() * personalities.length)];
+  return personalityTraits[Math.floor(Math.random() * personalityTraits.length)];
 }
 
 // Detect the language from user message
 export function detectLanguage(text: string): string {
   try {
-    // Use languagedetect to identify the language
+    // If text is too short, language detection is unreliable
+    if (!text || text.trim().length < 3) {
+      return 'english';
+    }
+    
+    // Common language patterns/unique words for better detection
+    const languageMarkers: Record<string, RegExp[]> = {
+      spanish: [/¿.+\?/i, /(?:\b|^)(?:hola|qué|cómo|gracias|por favor|buenos días|buenas noches|adiós)\b/i],
+      portuguese: [/(?:\b|^)(?:olá|obrigado|bom dia|boa tarde|tchau|tudo bem|como vai)\b/i],
+      french: [/(?:\b|^)(?:bonjour|merci|s'il vous plaît|au revoir|comment ça va|je suis|c'est)\b/i],
+      german: [/(?:\b|^)(?:guten tag|danke|bitte|auf wiedersehen|wie geht es dir|ich bin)\b/i],
+      italian: [/(?:\b|^)(?:ciao|grazie|per favore|arrivederci|come stai|sono)\b/i],
+      japanese: [/[\u3040-\u309F\u30A0-\u30FF]/], // Hiragana and Katakana
+      chinese: [/[\u4E00-\u9FFF]/], // Chinese characters
+      korean: [/[\uAC00-\uD7AF]/], // Hangul syllables
+      russian: [/[\u0400-\u04FF]/] // Cyrillic script
+    };
+    
+    // Check for distinctive language patterns first
+    for (const [language, patterns] of Object.entries(languageMarkers)) {
+      for (const pattern of patterns) {
+        if (pattern.test(text)) {
+          console.log(`Language detected via pattern match: ${language}`);
+          return language;
+        }
+      }
+    }
+    
+    // Use languagedetect as a fallback
     const detections = languageDetector.detect(text);
     
-    // If we have a detection with confidence above 0.1, use it
-    if (detections && detections.length > 0 && detections[0][1] > 0.1) {
-      return detections[0][0];
+    // Log all detected languages for debugging
+    if (detections && detections.length > 0) {
+      console.log("Language detections:", detections.map(d => `${d[0]}: ${d[1]}`).join(', '));
+    }
+    
+    // Improved confidence threshold for primary detection
+    if (detections && detections.length > 0) {
+      if (detections[0][1] > 0.2) {
+        return detections[0][0];
+      }
+      
+      // If we have multiple detections with close confidence, prefer the more common languages
+      const topDetections = detections.filter(d => d[1] > detections[0][1] * 0.7);
+      if (topDetections.length > 1) {
+        // Prioritize common languages if confidence scores are close
+        const commonLanguages = ['english', 'spanish', 'french', 'german', 'portuguese', 'italian'];
+        for (const language of commonLanguages) {
+          const detection = topDetections.find(d => d[0] === language);
+          if (detection) {
+            return detection[0];
+          }
+        }
+      }
     }
     
     // Default to English if detection fails or has low confidence

@@ -4,15 +4,27 @@ import MessageInput from "./MessageInput";
 import Message from "./Message";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { X } from "lucide-react";
-import useChat from "@/hooks/useChat";
+import { Message as MessageType } from "@/lib/types";
 
 interface ChatContainerProps {
   username: string;
   onChangeUsername: () => void;
+  messages: MessageType[];
+  isLoading: boolean;
+  error: string | null;
+  sendMessage: (message: string, isInitial?: boolean) => void;
+  clearError: () => void;
 }
 
-export default function ChatContainer({ username, onChangeUsername }: ChatContainerProps) {
-  const { messages, isLoading, error, sendMessage, clearError } = useChat();
+export default function ChatContainer({ 
+  username, 
+  onChangeUsername,
+  messages,
+  isLoading,
+  error,
+  sendMessage,
+  clearError
+}: ChatContainerProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,35 +45,49 @@ export default function ChatContainer({ username, onChangeUsername }: ChatContai
       <ChatHeader username={username} onChangeUsername={onChangeUsername} />
       
       <main className="flex-1 overflow-hidden flex flex-col max-w-4xl w-full mx-auto px-4">
-        <div className="message-container flex-1 overflow-y-auto py-4 space-y-4">
-          {messages.map((message) => (
-            <Message 
-              key={message.id}
-              message={message}
-              username={username}
-            />
-          ))}
+        {messages.length === 0 && !isLoading ? (
+          <div className="flex h-full items-center justify-center flex-col text-center px-4">
+            <div className="bg-muted/40 p-6 rounded-lg max-w-md">
+              <h3 className="text-xl font-bold mb-2">Welcome to DumAI!</h3>
+              <p className="text-muted-foreground mb-4">
+                Ask me anything, and I'll give you the most hilariously incorrect answer possible!
+              </p>
+              <p className="text-xs text-muted-foreground">
+                <strong>Tip:</strong> The more specific your question, the more absurdly wrong I can be!
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="message-container flex-1 overflow-y-auto py-4 space-y-4">
+            {messages.map((message) => (
+              <Message 
+                key={message.id}
+                message={message}
+                username={username}
+              />
+            ))}
 
-          {isLoading && (
-            <div className="flex items-start">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center mr-2">
-                <i className="fas fa-robot text-sm"></i>
-              </div>
-              <div className="bg-primary text-white p-3 rounded-lg rounded-tl-none">
-                <div className="typing-indicator">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+            {isLoading && (
+              <div className="flex items-start">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center mr-2">
+                  <i className="fas fa-robot text-sm"></i>
+                </div>
+                <div className="bg-primary text-white p-3 rounded-lg rounded-tl-none">
+                  <div className="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          
-          <div ref={messagesEndRef} />
-        </div>
+            )}
+            
+            <div ref={messagesEndRef} />
+          </div>
+        )}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300">
             <div className="flex">
               <div className="flex-shrink-0">
                 <i className="fas fa-exclamation-circle text-red-400 mt-0.5"></i>
@@ -73,7 +99,7 @@ export default function ChatContainer({ username, onChangeUsername }: ChatContai
               </div>
               <button 
                 type="button" 
-                className="ml-auto -mx-1.5 -my-1.5 bg-red-50 text-red-500 rounded-lg focus:ring-2 focus:ring-red-400 p-1.5 inline-flex h-8 w-8"
+                className="ml-auto -mx-1.5 -my-1.5 bg-red-50 text-red-500 rounded-lg focus:ring-2 focus:ring-red-400 p-1.5 inline-flex h-8 w-8 dark:bg-red-900/20 dark:text-red-300"
                 onClick={clearError}
               >
                 <span className="sr-only">Dismiss</span>

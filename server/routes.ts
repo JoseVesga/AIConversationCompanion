@@ -89,6 +89,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Failed to create user" });
     }
   });
+  
+  // Quick user registration/login endpoint
+  app.post('/api/auth', async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        username: z.string().min(2).max(30)
+      });
+      
+      const validation = schema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({
+          message: "Invalid username",
+          errors: validation.error.errors
+        });
+      }
+      
+      const { username } = validation.data;
+      
+      // Check if user exists
+      let user = await storage.getUserByUsername(username);
+      
+      // Create user if doesn't exist
+      if (!user) {
+        user = await storage.createUser({
+          username,
+          password: "dummypassword" // In a real app, handle proper authentication
+        });
+      }
+      
+      return res.status(200).json({
+        user: {
+          id: user.id,
+          username: user.username
+        }
+      });
+    } catch (error: any) {
+      console.error("Auth error:", error);
+      return res.status(500).json({ message: "Authentication failed" });
+    }
+  });
 
   // Chat session endpoints
   app.post('/api/sessions', async (req: Request, res: Response) => {
@@ -190,9 +231,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let activeSessionId = sessionId;
       let personality: string | undefined;
       
+      // Generate a title from the user's message
+      const generateTitle = (msg: string): string => {
+        if (!msg || msg.trim().length === 0) return "New Chat";
+        
+        // Extract first line and limit to reasonable length
+        const firstLine = msg.split(/\r?\n/)[0].trim();
+        
+        // If there's a question mark, use everything up to that
+        if (firstLine.includes("?")) {
+          const questionPart = firstLine.split("?")[0] + "?";
+          return questionPart.length > 40 ? questionPart.substring(0, 37) + "...?" : questionPart;
+        }
+        
+        // Otherwise use the first part of the message
+        return firstLine.length > 40 ? firstLine.substring(0, 37) + "..." : firstLine;
+      };
+      
       if (!activeSessionId && userId) {
         // Create a new session if one wasn't provided
         const user = await storage.getUser(userId);
+        
+        // Generate an appropriate title
+        const chatTitle = initial ? "New Chat" : generateTitle(message);
         
         if (!user && username) {
           // Create user if they don't exist
@@ -203,7 +264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const newSession = await storage.createChatSession({
             userId: newUser.id,
-            title: "New Chat",
+            title: chatTitle,
             personality: generateRandomPersonality()
           });
           
@@ -212,7 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (user) {
           const newSession = await storage.createChatSession({
             userId: user.id,
-            title: initial ? "New Chat" : message.substring(0, 30),
+            title: chatTitle,
             personality: generateRandomPersonality()
           });
           
@@ -224,6 +285,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const session = await storage.getChatSession(activeSessionId);
         if (session) {
           personality = session.personality;
+          
+          // Update title if this is the first user message and the title is still "New Chat"
+          if (!initial && message && session.title === "New Chat") {
+            await storage.updateChatSessionTitle(session.id, generateTitle(message));
+          }
         }
       } else {
         // No userId or sessionId, create a temporary session ID
