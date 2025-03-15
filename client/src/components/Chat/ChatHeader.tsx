@@ -8,8 +8,12 @@ export default function ChatHeader({ username, onChangeUsername }: ChatHeaderPro
     <header className="bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
       <div className="max-w-4xl mx-auto flex justify-between items-center">
         <div className="flex items-center">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-white mr-3">
-            <i className="fas fa-robot"></i>
+          <div className="flex items-center justify-center w-10 h-10 rounded-full mr-3 overflow-hidden">
+            <img 
+              src="/images/dumai-icon.svg" 
+              alt="DumAI" 
+              className="w-full h-full object-contain"
+            />
           </div>
           <div className="flex flex-col">
             <h1 className="text-xl font-semibold text-gray-800">DumAI</h1>

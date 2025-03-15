@@ -15,11 +15,11 @@ export default function Message({ message, username }: MessageProps) {
   return (
     <div className={`flex items-start ${isUser ? 'justify-end' : ''}`}>
       {!isUser && (
-        <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mr-2 transform -rotate-6 overflow-hidden">
+        <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mr-2 overflow-hidden dumai-icon-container">
           <img 
             src="/images/dumai-icon.svg" 
             alt="DumAI" 
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
           />
         </div>
       )}

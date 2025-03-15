@@ -82,11 +82,11 @@ export default function ChatContainer({
 
             {isLoading && (
               <div className="flex items-start">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mr-2 overflow-hidden">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mr-2 overflow-hidden">
                   <img 
                     src="/images/dumai-icon.svg" 
                     alt="DumAI" 
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                 </div>
                 <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white p-3 rounded-lg rounded-tl-none">
