@@ -106,10 +106,15 @@ export class MemStorage implements IStorage {
   
   async createChatMessage(insertMessage: InsertChatMessage): Promise<ChatMessage> {
     const id = this.messageId++;
+    
+    // Ensure language is set
+    const language = insertMessage.language || "english";
+    
     const message: ChatMessage = { 
       ...insertMessage, 
       id, 
-      timestamp: new Date() 
+      timestamp: new Date(),
+      language
     };
     this.chatMessages.set(id, message);
     

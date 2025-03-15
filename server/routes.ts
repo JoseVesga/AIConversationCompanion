@@ -1,9 +1,10 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateChatResponse } from "./openai";
+import { generateChatResponse, detectLanguage, generateRandomPersonality } from "./openai";
 import { z } from "zod";
 import OpenAI from "openai";
+import { v4 as uuidv4 } from "uuid";
 
 // Function to check if Groq API key is valid
 async function checkGroqApiKey(apiKey: string): Promise<boolean> {
@@ -56,13 +57,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User endpoints
+  app.post('/api/users', async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        username: z.string().min(3).max(30),
+        password: z.string().min(6)
+      });
+
+      const validation = schema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Invalid user data", 
+          errors: validation.error.errors 
+        });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(validation.data.username);
+      if (existingUser) {
+        // For simplicity, we'll just return the existing user
+        return res.status(200).json({ user: { id: existingUser.id, username: existingUser.username } });
+      }
+
+      // Create new user
+      const user = await storage.createUser(validation.data);
+      return res.status(201).json({ user: { id: user.id, username: user.username } });
+    } catch (error: any) {
+      console.error("User creation error:", error);
+      return res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  // Chat session endpoints
+  app.post('/api/sessions', async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        userId: z.number(),
+        title: z.string().optional()
+      });
+
+      const validation = schema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Invalid session data", 
+          errors: validation.error.errors 
+        });
+      }
+
+      const { userId, title = "New Chat" } = validation.data;
+      
+      // Generate a random personality for this chat
+      const personality = generateRandomPersonality();
+      
+      // Create new chat session
+      const session = await storage.createChatSession({
+        userId,
+        title,
+        personality
+      });
+
+      return res.status(201).json({ session });
+    } catch (error: any) {
+      console.error("Session creation error:", error);
+      return res.status(500).json({ message: "Failed to create chat session" });
+    }
+  });
+
+  // Get user's sessions
+  app.get('/api/users/:userId/sessions', async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const sessions = await storage.getChatSessionsByUserId(userId);
+      return res.status(200).json({ sessions });
+    } catch (error: any) {
+      console.error("Get sessions error:", error);
+      return res.status(500).json({ message: "Failed to get user sessions" });
+    }
+  });
+
+  // Get messages for a session
+  app.get('/api/sessions/:sessionId/messages', async (req: Request, res: Response) => {
+    try {
+      const { sessionId } = req.params;
+      
+      const session = await storage.getChatSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: "Chat session not found" });
+      }
+
+      const messages = await storage.getChatMessagesBySessionId(sessionId);
+      return res.status(200).json({ messages });
+    } catch (error: any) {
+      console.error("Get messages error:", error);
+      return res.status(500).json({ message: "Failed to get chat messages" });
+    }
+  });
+
   // Chat endpoints
   app.post('/api/chat', async (req: Request, res: Response) => {
     try {
       // Validate request body
       const schema = z.object({
         message: z.string().optional(),
-        initial: z.boolean().optional()
+        initial: z.boolean().optional(),
+        sessionId: z.string().optional(),
+        userId: z.number().optional(),
+        username: z.string().optional()
       });
 
       const validation = schema.safeParse(req.body);
@@ -74,27 +181,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { message = "", initial = false } = validation.data;
+      const { message = "", initial = false, sessionId, userId, username } = validation.data;
       
-      // Generate response from Groq
-      const aiResponse = await generateChatResponse(message, initial);
+      // Detect language from user message
+      const detectedLanguage = message ? detectLanguage(message) : "english";
       
-      // Store message in database if needed
+      // Ensure we have a session
+      let activeSessionId = sessionId;
+      let personality: string | undefined;
+      
+      if (!activeSessionId && userId) {
+        // Create a new session if one wasn't provided
+        const user = await storage.getUser(userId);
+        
+        if (!user && username) {
+          // Create user if they don't exist
+          const newUser = await storage.createUser({
+            username,
+            password: "defaultPassword" // In a real app, handle this more securely
+          });
+          
+          const newSession = await storage.createChatSession({
+            userId: newUser.id,
+            title: "New Chat",
+            personality: generateRandomPersonality()
+          });
+          
+          activeSessionId = newSession.id;
+          personality = newSession.personality;
+        } else if (user) {
+          const newSession = await storage.createChatSession({
+            userId: user.id,
+            title: initial ? "New Chat" : message.substring(0, 30),
+            personality: generateRandomPersonality()
+          });
+          
+          activeSessionId = newSession.id;
+          personality = newSession.personality;
+        }
+      } else if (activeSessionId) {
+        // Get the personality for the existing session
+        const session = await storage.getChatSession(activeSessionId);
+        if (session) {
+          personality = session.personality;
+        }
+      } else {
+        // No userId or sessionId, create a temporary session ID
+        activeSessionId = uuidv4();
+        personality = generateRandomPersonality();
+      }
+      
+      if (!activeSessionId) {
+        return res.status(400).json({ message: "Missing session ID or user ID" });
+      }
+      
+      // Generate response from Groq with the personality and detected language
+      const aiResponse = await generateChatResponse(message, initial, personality);
+      
+      // Store user message in database if needed
       if (!initial && message) {
         await storage.createChatMessage({
+          sessionId: activeSessionId,
           content: message,
-          role: "user"
+          role: "user",
+          language: detectedLanguage
         });
       }
       
       // Store AI response
       await storage.createChatMessage({
+        sessionId: activeSessionId,
         content: aiResponse,
-        role: "assistant"
+        role: "assistant",
+        language: detectedLanguage
       });
       
-      // Return response
-      return res.status(200).json({ message: aiResponse });
+      // Return response with session info
+      return res.status(200).json({ 
+        message: aiResponse,
+        sessionId: activeSessionId,
+        language: detectedLanguage
+      });
     } catch (error: any) {
       console.error("Chat API error:", error);
       
