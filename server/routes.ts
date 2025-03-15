@@ -53,7 +53,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       return res.status(500).json({ 
-        message: "An unexpected error occurred. Please try again." 
+        message: "Even my errors are completely wrong! Please try again." 
       });
     }
   });

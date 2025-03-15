@@ -1,8 +1,9 @@
 import OpenAI from "openai";
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+// Use OpenAI client with Groq API
 const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || "sk-dummy-key" 
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1"
 });
 
 export async function generateChatResponse(message: string, isInitial = false): Promise<string> {
@@ -12,7 +13,7 @@ export async function generateChatResponse(message: string, isInitial = false): 
       : message;
     
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "llama3-70b-8192", // Using Llama 3 model through Groq
       messages: [
         {
           role: "system",
@@ -29,7 +30,7 @@ export async function generateChatResponse(message: string, isInitial = false): 
 
     return response.choices[0].message.content || "Sorry, my circuit for being wrong is broken right now. I accidentally might give you a correct answer! - DumAI: Confidently Wrong Since 2025";
   } catch (error) {
-    console.error("OpenAI API error:", error);
+    console.error("Groq API error:", error);
     throw new Error("Failed to get a response from DumAI. Even my errors are wrong! Please try again later.");
   }
 }
