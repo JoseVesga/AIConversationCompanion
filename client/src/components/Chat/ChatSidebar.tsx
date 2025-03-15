@@ -56,6 +56,29 @@ export default function ChatSidebar({
     loadSessions();
   }, [userId]);
 
+  // Refresh sessions when active session changes
+  useEffect(() => {
+    if (activeSessionId) {
+      // Add a small delay to ensure the session is saved before refreshing
+      const timeoutId = setTimeout(() => {
+        loadSessions();
+      }, 500);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [activeSessionId]);
+
+  // Auto-refresh sessions periodically
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (userId) {
+        loadSessions();
+      }
+    }, 10000); // Refresh every 10 seconds
+    
+    return () => clearInterval(intervalId);
+  }, [userId]);
+
   // Format relative time for chat sessions
   const formatRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
