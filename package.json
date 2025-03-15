@@ -56,6 +56,7 @@
     "framer-motion": "^11.13.1",
     "groq": "^3.79.0",
     "input-otp": "^1.2.4",
+    "languagedetect": "^2.0.0",
     "lucide-react": "^0.453.0",
     "memorystore": "^1.6.7",
     "openai": "^4.87.3",
