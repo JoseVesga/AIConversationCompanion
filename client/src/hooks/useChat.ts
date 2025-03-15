@@ -81,7 +81,11 @@ export default function useChat({ userId, username, initialSessionId }: UseChatO
     
     // Auto-start with welcome message
     if (username) {
-      sendMessage("", true);
+      // Add a small delay to ensure state is updated
+      setTimeout(() => {
+        // We'll handle the initial message in ChatContainer useEffect
+        sendMessage("", true);
+      }, 100);
     }
   }, [username]);
 

@@ -33,12 +33,25 @@ export default function ChatContainer({
     }
   }, [messages, isLoading]);
 
-  // Add initial welcome message if there are no messages
+  // Add initial welcome message if there are no messages and we're not explicitly starting a new chat
   useEffect(() => {
-    if (messages.length === 0 && username) {
-      sendMessage("", true); // Send empty message to get welcome message
+    // We only want to auto-send the welcome message when the component mounts initially
+    // Not on every time messages array becomes empty (which happens when starting a new chat)
+    const shouldSendWelcomeMessage = 
+      messages.length === 0 && 
+      username && 
+      !isLoading; // Avoid multiple requests
+
+    if (shouldSendWelcomeMessage) {
+      // Use a flag in sessionStorage to prevent sending multiple initial messages
+      const welcomeMessageSent = sessionStorage.getItem('welcome_message_sent');
+      
+      if (!welcomeMessageSent) {
+        sessionStorage.setItem('welcome_message_sent', 'true');
+        sendMessage("", true); // Send empty message to get welcome message
+      }
     }
-  }, [username, messages.length, sendMessage]);
+  }, []);
 
   return (
     <div id="chat-app" className="flex flex-col h-full">
@@ -69,10 +82,14 @@ export default function ChatContainer({
 
             {isLoading && (
               <div className="flex items-start">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center mr-2">
-                  <i className="fas fa-robot text-sm"></i>
+                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mr-2 overflow-hidden">
+                  <img 
+                    src="/images/dumai-icon.svg" 
+                    alt="DumAI" 
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-                <div className="bg-primary text-white p-3 rounded-lg rounded-tl-none">
+                <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white p-3 rounded-lg rounded-tl-none">
                   <div className="typing-indicator">
                     <span></span>
                     <span></span>

@@ -224,6 +224,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { message = "", initial = false, sessionId, userId, username } = validation.data;
       
+      // Check if this is a duplicate initial request (prevent double welcome messages)
+      // This can happen when the client makes multiple initial requests in quick succession
+      if (initial && req.session && req.session.initialRequestProcessed) {
+        return res.status(200).json({ 
+          message: "Welcome message already sent",
+          sessionId: req.session.lastSessionId || uuidv4()
+        });
+      }
+      
       // Detect language from user message
       const detectedLanguage = message ? detectLanguage(message) : "english";
       

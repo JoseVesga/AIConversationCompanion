@@ -15,8 +15,12 @@ export default function Message({ message, username }: MessageProps) {
   return (
     <div className={`flex items-start ${isUser ? 'justify-end' : ''}`}>
       {!isUser && (
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center mr-2 transform -rotate-6 shadow-md">
-          <i className="fas fa-robot text-sm"></i>
+        <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mr-2 transform -rotate-6 overflow-hidden">
+          <img 
+            src="/images/dumai-icon.svg" 
+            alt="DumAI" 
+            className="w-full h-full object-cover"
+          />
         </div>
       )}
       
@@ -27,7 +31,7 @@ export default function Message({ message, username }: MessageProps) {
         <div className={`
           p-3 rounded-lg 
           ${isUser 
-            ? 'bg-gray-200 text-gray-800 rounded-tr-none max-w-[85%] shadow-sm border border-gray-300' 
+            ? 'bg-gray-200 text-gray-800 rounded-tr-none max-w-[85%] shadow-sm border border-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600' 
             : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-tl-none max-w-[85%] shadow-md transform -rotate-1'
           }
         `}>
@@ -39,7 +43,7 @@ export default function Message({ message, username }: MessageProps) {
       </div>
       
       {isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center ml-2 shadow-sm">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center ml-2 shadow-sm dark:bg-gray-600 dark:text-gray-300">
           <i className="fas fa-user text-sm"></i>
         </div>
       )}
